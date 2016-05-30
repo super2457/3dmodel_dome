@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>example_5</title>
+    <style>
+        html, body, #canvas3d{
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+
+
+    <div id="canvas3d"></div>
+
+    <div style="display: none">
+        <input type="file" id="upFile" />
+    </div>
+
+    <script src="dat.gui.min.js"></script>
+    <script src="three.min.js"></script>
+    <script src="TrackballControls.js"></script>
+    <script src="stats.min.js"></script>
+    <script>
+
+        var winDomHtml = document.getElementsByTagName('html')[0];
+        var winWidth = winDomHtml.clientWidth;
+        var winHeight = winDomHtml.clientHeight;
+        var canvas3D = document.getElementById('canvas3d');
+        var upFile = document.getElementById('upFile');
+
+        /* ---------  STATS.STATE  ---------- */
+        var stats = new Stats();
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.left = '0px';
+        stats.domElement.style.top = '0px';
+        document.body.appendChild(stats.domElement);
+        /* ---------  STATS.END  ---------- */
+
+        /* ---------  场景&相机.STATE  ---------- */
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(45,winWidth / winHeight,0.1,1000);
+        camera.position.z = 5;
+
+        var TBControls = new THREE.TrackballControls(camera);
+        TBControls.rotateSpeed = 5.0;
+        TBControls.zoomSpeed = 5;
+        TBControls.panSpeed = 2;
+
+        TBControls.noZoom = false;
+        TBControls.noPan = false;
+
+        TBControls.staticMoving = false;
+        TBControls.dynamicDampingFactor = 0.3;
+        /* ---------  场景&相机.END  ---------- */
+
+        /* ---------  渲染器.STATE  ---------- */
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(winWidth,winHeight);
+        canvas3D.appendChild(renderer.domElement);
+        /* ---------  渲染器.END  ---------- */
+
+        var matArray = createMatArray();
+        var material = new THREE.MeshFaceMaterial(matArray);
+        cube = new THREE.Mesh(new THREE.CubeGeometry(1,1,1),material);
+        scene.add(cube);
+
+        upFile.addEventListener('change',readFile,false);
+
+        /* ---------  GUI.STATE  ---------- */
+        var gui = new dat.GUI();
+
+
+        var controls = new function () {
+            this['清空场景'] = function () {
+                if(scene.children.length == 1){
+                    scene.remove(scene.children[0])
+                }else{
+                    alert('场景为空');
+                }
+            };
+            this.face;
+            this['长'] = 1;
+            this['宽'] = 1;
+            this['高'] = 1;
+            this['自动预览'] = false;
+            this['选择'] = 0;
+            this['修改'] = function () {
+                upFile.click();
+            }
+        };
+        gui.add(controls,'清空场景');
+        gui.add(controls,'长',0.5,3);
+        gui.add(controls,'宽',0.5,3);
+        gui.add(controls,'高',0.5,3);
+        gui.add(controls,'自动预览');
+        gui.add(controls,'选择',{ 'A面': 0, 'B面': 1, 'C面': 2, 'D面': 3, 'E面': 4, 'F面': 5 } ).onChange(function (e) {
+            console.log(e);
+            controls.face = e;
+        });
+        gui.add(controls,'修改');
+        /* ---------  GUI.END  ---------- */
+        function readFile(){
+            var file = this.files[0];
+            console.log(file.type);
+            if(!/image\/\w+/.test(file.type)){
+                alert("文件必须为图片！");
+                return false;
+            }
+            var reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e){
+                if(scene.children.length == 1){
+                    var r = scene.children[0].rotation;
+                    var s = scene.children[0].scale;
+                    var matArr = upMat(this.result);
+                    var mat = new THREE.MeshFaceMaterial(matArr);
+                    controls['清空场景']();
+                    var cube = new THREE.Mesh(new THREE.CubeGeometry(1,1,1),mat);
+                    cube.scale.set(s.x,s.y,s.z);
+                    cube.rotation.set(r._x,r._y,r._z);
+                    scene.add(cube)
+                }
+
+            }
+        }
+
+        function upMat(url) {
+            console.log(controls.face);
+            matArray[controls.face] = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture(url)});
+            return matArray;
+        }
+
+        function createMatArray() {
+            var path = "./direction/";
+            var format = '.jpg';
+            var matArray = [];
+            var urls = ['A','B','C','D','E','F'];
+            for(var i in urls){
+                matArray.push(new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture(path+urls[i]+format)}))
+            }
+            return matArray;
+        }
+
+        function render(){
+            requestAnimationFrame(render);
+
+            var children = scene.children;
+            if(children.length == 1){
+//                children[0].rotation.x += 0.01;
+//                children[0].rotation.y += 0.01;
+                children[0].scale.x = controls['长'];
+                children[0].scale.y = controls['宽'];
+                children[0].scale.z = controls['高'];
+            }
+            TBControls.update();
+            renderer.render(scene,camera);
+
+            stats.update();
+        }
+        render();
+
+    </script>
+</body>
+</html>
